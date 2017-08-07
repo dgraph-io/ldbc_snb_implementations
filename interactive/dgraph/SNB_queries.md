@@ -45,3 +45,49 @@ Given two Persons, find the shortest path between these two Persons in the subgr
 
 #Query 14:
 Given two Persons, find all (unweighted) shortest paths between these two Persons, in the subgraph induced by the Knows relationship. Then, for each path calculate a weight. The nodes in the path are Persons, and the weight of a path is the sum of weights between every pair of consecutive Person nodes in the path. The weight for a pair of Persons is calculated such that every reply (by one of the Persons) to a Post (by the other Person) contributes 1.0, and every reply (by ones of the Persons) to a Comment (by the other Person) contributes 0.5. Return all the paths with shortest length, and their weights. Sort results descending by path weight. The order of paths with the same weight is unspecified.
+
+#ShortQuery 1:
+A person's properties
+
+#ShortQuery 2:
+Given a start Person, retrieve the last 10 Messages (Posts or Comments) created by that person. For each message, return that message, the original post in its conversation, and the author of that post. Order results descending by message creation date, then descending by message identifier
+
+#ShortQuery 3:
+Given a start Person, retrieve all of their friends, and the date at which they became friends. Order results descending by friendship creation date, then ascending by friend identifier
+
+#ShortQuery 4:
+Given a Message (Post or Comment), retrieve its content and creation date.
+
+#ShortQuery 5:
+Given a Message (Post or Comment), retrieve its author.
+
+#ShortQuery 6:
+Given a Message (Post or Comment), retrieve the Forum that contains it and the Person that moderates that forum.
+
+#ShortQuery 7:
+Given a Message (Post or Comment), retrieve the (1-hop) Comments that reply to it. In addition, return a boolean flag indicating if the author of the reply knows the author of the original message. If author is same as original author, return false for "knows" flag. Order results descending by comment identifier, then descending by author identifier.
+
+#Update 1:
+Add a person. Currently assuming all edge end point vertices exist
+
+#Update 2:
+Adds like, assumes person and post exist.
+
+#Update 3:
+Adds like from person to comment, assumes person and comment exist
+
+#Update 4:
+Adds forum and it's moderator and tags. Assume moderator person and tags exist
+
+#Update 5:
+Adds membership edge between forum and person. Assumes both exist.
+
+#Update 6:
+Add post vertex, creator edge, container edge, isLocatedIn edge and tag edges. All other vertices are assumed to exist.
+
+#Update 7:
+Add comment
+
+#Update 8:
+Add knows edge between two given people assumed to exist
+
