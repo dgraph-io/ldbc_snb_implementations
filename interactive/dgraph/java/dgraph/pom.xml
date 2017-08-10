@@ -11,9 +11,9 @@
   		<artifactId>jeeves</artifactId>
 	</dependency>
 	<dependency>
-	  <groupId>dgraph4j</groupId>
-	  <artifactId>dgraph</artifactId>
-          <version>4.0</version>
+		<groupId>io.dgraph</groupId>
+		<artifactId>dgraph4j</artifactId>
+		<version>0.0.2-SNAPSHOT</version>
 	</dependency>
   </dependencies>
   <dependencyManagement>
@@ -23,6 +23,11 @@
   			<artifactId>jeeves</artifactId>
   			<version>0.3-SNAPSHOT</version>
   		</dependency>
+		<dependency>
+			<groupId>io.dgraph</groupId>
+			<artifactId>dgraph4j</artifactId>
+			<version>0.0.2-SNAPSHOT</version>
+		</dependency>
   	</dependencies>
   </dependencyManagement>
 </project>
