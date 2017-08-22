@@ -1,0 +1,14 @@
+------------------------------------------------------------
+
+{
+  q(func: uid(@Person@))
+  {
+    _uid_
+    knows(orderdesc: creationDate, orderasc: firstName) {
+        _uid_
+        firstName
+        lastName
+        creationDate
+    }
+  }
+}

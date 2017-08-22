@@ -1,0 +1,16 @@
+------------------------------------------------------------
+
+{
+  person(func: uid(@Person@)) {
+    firstName
+    lastName
+    gender
+    birthday
+    creationDate
+    locationIP
+    browserUsed
+    isLocatedIn {
+        _uid_
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+    var(func: uid(@Person@)) {
+        knows {
+            msg as ~hasCreator
+        }
+    }
+
+    q(func: uid(msg), orderdesc:creationDate, first: 20) @filter(le(creationDate, "@Date@"))  {
+        _uid_
+        content
+        creationDate
+        hasCreator {
+            _uid_
+            firstName
+            lastName
+        }
+    }
+}
+
+------------------------------------------------------------
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+    var(func: uid(3458764513820542057)) {
+        knows {
+            msg as ~hasCreator
+        }
+    }
+
+    q(func: uid(msg), orderdesc:creationDate, first: 20) @filter(le(creationDate, "2012-10-12T07:06:29.591Z"))  {
+        _uid_
+        content
+        creationDate
+        hasCreator {
+            _uid_
+            firstName
+            lastName
+        }
+    }
+}
+' | python -m json.tool
+

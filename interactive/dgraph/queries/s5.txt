@@ -1,0 +1,13 @@
+------------------------------------------------------------
+
+{
+  q(func: uid(@Message@))
+  {
+    hasCreator {
+        _uid_
+        firstName
+        lastName
+    }
+  }
+}
+' | python -m json.tool
