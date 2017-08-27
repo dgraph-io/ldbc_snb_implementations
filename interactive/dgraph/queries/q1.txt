@@ -1,5 +1,67 @@
+{
+    var(func: uid(@Person@)) {
+        friend1 as knows {
+            friend2 as knows {
+                friend3 as knows
+            }
+        }
+    }
+
+    q(func: uid(friend1, friend2, friend3), orderdesc: birthday, first: 20) @filter(NOT uid(@Person@) AND eq(firstName, "@Name@")) {
+        _uid_
+        birthday
+        firstName
+        lastName
+        ~knows @filter(uid(@Person@)) {
+            creationDate
+        }
+        gender
+        browserUsed
+        locationIP
+        email
+        language
+    }
+}
 
 ------------------------------------------------------------
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+    var(func: uid(3458764513820542057)) {
+        friend1 as knows {
+            friend2 as knows {
+                friend3 as knows
+            }
+        }
+    }
+
+    q(func: uid(friend1, friend2, friend3), orderdesc: birthday, first: 20) @filter(NOT uid(3458764513820542057) AND eq(firstName, "Lin")) {
+        _uid_
+        birthday
+        firstName
+        lastName
+        ~knows @filter(uid(3458764513820542057)) {
+            creationDate
+        }
+        gender
+        browserUsed
+        locationIP
+        email
+        language
+        isLocatedIn {
+            name
+        }
+        studyAt {
+            name
+        }
+        workAt {
+            name
+        }
+    }
+}
+' | python -m json.tool
+
+
 curl ubuntu:8080/query -XPOST -s -d '
 {
     recurse(func: eq(xid, "person_1129"), depth: 3, orderdesc: lastName, first: 1) {

@@ -149,19 +149,36 @@ class DgraphDb : Db() {
         override fun executeOperation(operation: LdbcQuery1, state: DgraphDbConnectionState, resultReporter: ResultReporter) {
             val conn = state.conn
             val RESULT = ArrayList<LdbcQuery1Result>()
-            val results_count = 0
+            var results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query1.txt"))
-                queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
-                queryString = queryString.replace("@Name@".toRegex(), operation.firstName())
+                var queryString = file2string(File(state.queryDir, "q1.txt"))
+                        .replace("@Person@", operation.personId().toString())
+                        .replace("@Name@", operation.firstName())
 
                 if (state.isPrintNames)
                     println("########### LdbcQuery1")
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()
+                val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
+                result.map { it.asJsonObject }.forEach {
+                    results_count++
+                    RESULT.add(LdbcQuery1Result(
+                            getXid(it["_uid_"].asLong),
+                            it["lastName"].asString,
+                            1, // TODO: How to get distance?
+                            it["birthday"].asLong,
+                            if (it.has("~knows")) it["~knows"].asJsonObject["creationDate"].asLong else 0L,
+                            it["gender"].asString,
+                            it["browserUsed"].asString,
+                            it["locationIP"].asString,
+                            arrayOf(it["email"].asString).toList(),
+                            arrayOf(it["language"].asString).toList(),
+                            it["language"].asJsonArray[0].asJsonObject["name"].asString,
+                            it["studyAt"].asJsonArray.map{ it.asJsonObject["name"].asString }.toTypedArray().toList().it,
+                            ))
+                }
                 // TODO:
                 //                for(JsonElement v: result.getAsJsonArray()) {
                 //                    String key=(String)keys.next();
@@ -1544,7 +1561,7 @@ mutation {
                         sb.append("\n")
                     }
                 }
-                val ret=sb.toString()
+                val ret = sb.toString()
                 // Anything below a line will be ignored
                 return ret.substring(0, ret.indexOf("----------"))
             } catch (e: IOException) {
