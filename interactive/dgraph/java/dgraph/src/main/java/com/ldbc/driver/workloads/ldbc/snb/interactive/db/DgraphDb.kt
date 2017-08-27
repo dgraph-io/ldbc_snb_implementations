@@ -8,22 +8,33 @@ import com.ldbc.driver.control.LoggingService
 import com.ldbc.driver.workloads.ldbc.snb.interactive.*
 import io.dgraph.client.DgraphClient
 import io.dgraph.client.GrpcDgraphClient
-import org.codehaus.jackson.map.util.JSONPObject
-
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 import java.io.IOException
 import java.sql.CallableStatement
-import java.sql.PreparedStatement
-import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.HashMap
 
+// Extensions
+operator fun JsonElement.get(property: String): JsonElement = this.asJsonObject[property]
+
+operator fun JsonElement.get(index: Int): JsonElement = this.asJsonArray[index]
+
+val JsonElement.asDateLong: Long
+    get() = DgraphDb.dateToLong(this)
+
+val JsonElement.uid: Long
+    get() = this.asJsonObject["_uid_"].asLong
+
+val JsonElement.xid: Long
+    get() = DgraphDb.getXid(this.uid)
+
 class DgraphDb : Db() {
+
     private var connectionState: DgraphDbConnectionState? = null
 
     @Throws(DbException::class)
@@ -145,6 +156,10 @@ class DgraphDb : Db() {
      * ascending by their identifier.
      */
     class LdbcQuery1ToDgraph : OperationHandler<LdbcQuery1, DgraphDbConnectionState> {
+
+        data class University(val name: String)
+        data class Company(val name: String)
+
         @Throws(DbException::class)
         override fun executeOperation(operation: LdbcQuery1, state: DgraphDbConnectionState, resultReporter: ResultReporter) {
             val conn = state.conn
@@ -153,7 +168,7 @@ class DgraphDb : Db() {
             RESULT.clear()
             try {
                 var queryString = file2string(File(state.queryDir, "q1.txt"))
-                        .replace("@Person@", operation.personId().toString())
+                        .replace("@Person@", getPersonId(operation.personId()).toString())
                         .replace("@Name@", operation.firstName())
 
                 if (state.isPrintNames)
@@ -161,36 +176,28 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
+                val r0 = conn.query(queryString)
+                val r1 = r0.toJsonObject()
+                val result = r1["q"].asJsonArray
                 result.map { it.asJsonObject }.forEach {
                     results_count++
                     RESULT.add(LdbcQuery1Result(
                             getXid(it["_uid_"].asLong),
                             it["lastName"].asString,
                             1, // TODO: How to get distance?
-                            it["birthday"].asLong,
+                            dateToLong(it["birthday"].asString),
                             if (it.has("~knows")) it["~knows"].asJsonObject["creationDate"].asLong else 0L,
                             it["gender"].asString,
                             it["browserUsed"].asString,
                             it["locationIP"].asString,
-                            arrayOf(it["email"].asString).toList(),
-                            arrayOf(it["language"].asString).toList(),
-                            it["language"].asJsonArray[0].asJsonObject["name"].asString,
-                            it["studyAt"].asJsonArray.map{ it.asJsonObject["name"].asString }.toTypedArray().toList().it,
-                            ))
+                            if (it.has("email")) arrayOf(it["email"].asString).toList() else arrayListOf(),
+                            if (it.has("language")) arrayOf(it["language"].asString).toList() else arrayListOf(),
+                            it["isLocatedIn"].asJsonArray[0].asJsonObject["name"].asString,
+                            arrayListOf(),
+                            arrayListOf()
+                    ))
                 }
-                // TODO:
-                //                for(JsonElement v: result.getAsJsonArray()) {
-                //                    String key=(String)keys.next();
-                //                    results_count++;
-                //                    v...
-                //                    LdbcQuery1Result tmp = new LdbcQuery1Result(id, lastName, dist, birthday, creationDate,
-                //                            gender, browserUsed, ip, emails, languages, place, universities, companies);
-                //                    if (state.isPrintResults())
-                //                        System.out.println(tmp.toString());
-                //                    RESULT.add(tmp);
-                //                }
-                conn.close()
+
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -216,7 +223,7 @@ class DgraphDb : Db() {
                 val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'+00:00'")
                 sdf.timeZone = TimeZone.getTimeZone("GMT")
                 val queryString = file2string(File(state.queryDir, "q2.txt"))
-                        .replace("@Person@", "")
+                        .replace("@Person@", getPersonId(operation.personId()).toString())
                         .replace("@Date@", sdf.format(operation.maxDate()))
 
                 if (state.isPrintNames)
@@ -224,20 +231,20 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray
+                val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
                 result.map { it.asJsonObject }.forEach {
                     results_count++
-                    val person = it["hasCreator"].asJsonArray[0].asJsonObject
+                    val person = it["hasCreator"][0].asJsonObject
                     RESULT.add(LdbcQuery2Result(
-                            getXid(person["_uid_"].asLong),
+                            person.xid,
                             person["firstName"].asString,
                             person["lastName"].asString,
-                            getXid(it["_uid_"].asLong),
+                            it.xid,
                             it["content"].asString,
-                            it["creationDate"].asLong
+                            it["creationDate"].asDateLong
                     ))
                 }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -269,7 +276,7 @@ class DgraphDb : Db() {
                 queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
                 queryString = queryString.replace("@Country1@".toRegex(), operation.countryXName())
                 queryString = queryString.replace("@Country2@".toRegex(), operation.countryYName())
-                queryString = queryString.replace("@Date0@".toRegex(), sdf.format(operation.startDate()))
+                queryString = queryString.replace("@Date1@".toRegex(), sdf.format(operation.startDate()))
                 queryString = queryString.replace("@Duration@".toRegex(), operation.durationDays().toString())
 
                 if (state.isPrintNames)
@@ -288,7 +295,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -338,7 +345,7 @@ class DgraphDb : Db() {
                             it["val(postCount)"].asInt
                     ))
                 }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -386,7 +393,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -433,7 +440,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -478,7 +485,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -527,7 +534,7 @@ class DgraphDb : Db() {
                     ))
 
                 }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -575,7 +582,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -629,7 +636,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -676,7 +683,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -723,7 +730,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -770,7 +777,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -820,7 +827,7 @@ class DgraphDb : Db() {
                 //                        System.out.println(tmp.toString());
                 //                    RESULT.add(tmp);
                 //                }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -843,23 +850,28 @@ class DgraphDb : Db() {
 
             try {
                 val queryString = file2string(File(state.queryDir, "s1.txt")).replace("@Person@", getPersonId(operation.personId()).toString())
+                if (state.isPrintNames)
+                    println("########### LdbcShortQuery1")
+                if (state.isPrintStrings)
+                    println(queryString)
+
                 val result = conn.query(queryString).toJsonObject()
-                result["data"].asJsonObject["person"].asJsonArray.map { it.asJsonObject }.forEach {
+                result["person"].asJsonArray.map { it.asJsonObject }.forEach {
                     results_count++
                     RESULT = LdbcShortQuery1PersonProfileResult(
                             it["firstName"].asString,
                             it["lastName"].asString,
-                            it["birthday"].asLong,
+                            dateToLong(it["birthday"]),
                             it["locationIP"].asString,
                             it["browserUsed"].asString,
-                            getXid(it["city"].asJsonObject["_uid_"].asLong),
+                            getXid(it["isLocatedIn"][0]["_uid_"].asLong),
                             it["gender"].asString,
-                            it["creationDate"].asLong
+                            dateToLong(it["creationDate"])
                     )
                     if (state.isPrintResults)
                         println(RESULT.toString())
                 }
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -889,24 +901,37 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["recurse"].asJsonArray
+                val result = conn.query(queryString).toJsonObject()["recurse"].asJsonArray
 
                 result.map { it.asJsonObject }.forEach {
                     val postObj = findLeaf("replyOf", it)
-                    val postAuthor = postObj["hasCreator"].asJsonArray[0].asJsonObject
-                    RESULT.add(LdbcShortQuery2PersonPostsResult(
-                            getXid(it["_uid_"].asLong),
-                            it["content"].asString,
-                            it["creationDate"].asLong,
-                            getXid(postObj["_uid_"].asLong),
-                            getXid(postAuthor["_uid_"].asLong),
-                            postAuthor["firstName"].asString,
-                            postAuthor["lastName"].asString
-                    ))
+                    if (postObj.has("hasCreator")) {
+                        val postAuthor = postObj["hasCreator"][0].asJsonObject
+                        RESULT.add(LdbcShortQuery2PersonPostsResult(
+                                it.uid,
+                                it["content"].asString,
+                                it["creationDate"].asDateLong,
+                                getXid(postObj["_uid_"].asLong),
+                                getXid(postAuthor["_uid_"].asLong),
+                                postAuthor["firstName"].asString,
+                                postAuthor["lastName"].asString
+                        ))
+                    } else {
+                        // NOTE: Data issue, reply doesn't have "hasCreator"?
+                        RESULT.add(LdbcShortQuery2PersonPostsResult(
+                                it.uid,
+                                it["content"].asString,
+                                it["creationDate"].asDateLong,
+                                postObj.uid,
+                                0,
+                                "",
+                                ""
+                        ))
+                    }
                     results_count++
                 }
 
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 println("Err: LdbcShortQuery2 (" + operation.personId() + ")")
                 e.printStackTrace()
@@ -935,20 +960,21 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()
-                result["data"].asJsonObject["q"].asJsonObject["knows"].asJsonArray.map { it.asJsonObject }.forEach {
-                    results_count++
-                    RESULT.add(LdbcShortQuery3PersonFriendsResult(
-                            getXid(it["_uid_"].asLong),
-                            it["firstName"].asString,
-                            it["lastName"].asString,
-                            it["creationDate"].asLong
-                    ))
-                }
+                val result = conn.query(queryString).toJsonObject()["q"][0].asJsonObject
+                if (result.has("knows"))
+                    result["knows"].asJsonArray.map { it.asJsonObject }.forEach {
+                        results_count++
+                        RESULT.add(LdbcShortQuery3PersonFriendsResult(
+                                it.xid,
+                                it["firstName"].asString,
+                                it["lastName"].asString,
+                                it["creationDate"].asDateLong
+                        ))
+                    }
                 if (state.isPrintResults)
                     println(RESULT.toString())
 
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -975,11 +1001,11 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
                 val result = conn.query(queryString).toJsonObject()
-                val obj = result["data"].asJsonObject["q"].asJsonArray[0].asJsonObject
+                val obj = result["q"][0].asJsonObject
                 results_count++
-                RESULT = LdbcShortQuery4MessageContentResult(obj["content"].asString, obj["creationDate"].asLong)
+                RESULT = LdbcShortQuery4MessageContentResult(obj["content"].asString, obj["creationDate"].asDateLong)
 
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 println("Err: LdbcShortQuery4 (" + operation.messageId() + ")")
                 e.printStackTrace()
@@ -1005,14 +1031,15 @@ class DgraphDb : Db() {
                     println("########### LdbcShortQuery5")
                 if (state.isPrintStrings)
                     println(queryString)
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray[0].asJsonObject["hasCreator"].asJsonObject
+                val result = conn.query(queryString).toJsonObject()
+                val obj = result["q"][0]["hasCreator"].asJsonObject
                 results_count++
                 RESULT = LdbcShortQuery5MessageCreatorResult(
-                        getXid(result["_uid_"].asLong),
-                        result["firstName"].asString,
-                        result["lastName"].asString)
+                        obj.xid,
+                        obj["firstName"].asString,
+                        obj["lastName"].asString)
 
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -1038,21 +1065,22 @@ class DgraphDb : Db() {
                     println("########### LdbcShortQuery6")
                 if (state.isPrintStrings)
                     println(queryString)
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["recurse"].asJsonArray[0].asJsonObject
+                val r0 = conn.query(queryString).toJsonObject()
+                val result = r0["recurse"][0].asJsonObject
                 val post = findLeaf("replyOf", result)
-                val forum = post["~containerOf"].asJsonArray[0].asJsonObject
-                val person = forum["hasModerator"].asJsonArray[0].asJsonObject
+                val forum = post["~containerOf"][0].asJsonObject
+                val person = forum["hasModerator"][0].asJsonObject
 
                 results_count++
                 RESULT = LdbcShortQuery6MessageForumResult(
-                        getXid(forum["_uid_"].asLong),
+                        forum.xid,
                         forum["title"].asString,
-                        getXid(person["_uid_"].asLong),
+                        person.xid,
                         person["firstName"].asString,
                         person["lastName"].asString
                 )
 
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -1100,7 +1128,7 @@ class DgraphDb : Db() {
                     ))
                 }
 
-                conn.close()
+                // conn.close()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -1189,7 +1217,7 @@ mutation {
                 println("Query to be sent to Dgraph:")
                 println(queryString)
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1219,7 +1247,7 @@ mutation {
     <0x${person.toString(16)}> <likes> <0x${post.toString(16)}> (creationDate=${df.format(operation.creationDate())}) .
 }"""
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1248,7 +1276,7 @@ mutation {
     <0x${person.toString(16)}> <likes> <0x${comment.toString(16)}> (creationDate=${df.format(operation.creationDate())}) .
 }"""
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1291,7 +1319,7 @@ mutation {
 }"""
 
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1320,7 +1348,7 @@ mutation {
     <0x${forum.toString(16)}> <hasMember> <0x${person.toString(16)}> (joinDate=${df.format(operation.joinDate())}) .
 }"""
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1380,11 +1408,11 @@ mutation {
 """
 
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
                 try {
-                    conn.close()
+                    // conn.close()
                 } catch (e1: SQLException) {
                 }
 
@@ -1453,7 +1481,7 @@ mutation {
 """
 
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1484,7 +1512,7 @@ mutation {
     <$person1> <knows> <$person2> (creationDate=${df.format(operation.creationDate())}) .
 }"""
                 conn.query(queryString)
-                conn.close()
+                // conn.close()
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -1508,7 +1536,7 @@ mutation {
         }
 
         fun getXid(uid: Long): Long = NodeType.MASK.value and uid
-        fun getUid(type: NodeType, xid: Long): Long = type.value and xid
+        fun getUid(type: NodeType, xid: Long): Long = type.value or xid
 
         fun getMessageId(xid: Long): Long = getUid(NodeType.MESSAGE, xid)
         fun getForumId(xid: Long): Long = getUid(NodeType.FORUM, xid)
@@ -1534,7 +1562,7 @@ mutation {
         fun findLeaf(key: String, obj: JsonObject): JsonObject {
             var ret: JsonObject = obj
             while (ret.has(key)) {
-                ret = ret["key"].asJsonArray[0].asJsonObject[key].asJsonObject
+                ret = ret[key][0].asJsonObject
             }
             return ret
         }
@@ -1577,9 +1605,14 @@ mutation {
             }
         }
 
+        val PARSER = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        fun dateToLong(value: String): Long = PARSER.parse(value).time
+        fun dateToLong(value: JsonElement): Long = PARSER.parse(value.asString).time
+
         @JvmStatic
         fun main(args: Array<String>) {
         }
     }
+
 }
 

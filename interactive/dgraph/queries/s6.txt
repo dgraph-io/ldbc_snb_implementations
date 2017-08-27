@@ -1,16 +1,14 @@
-------------------------------------------------------------
-
 {
     recurse(uid(@Message@)) {
+        _uid_
         replyOf
-        xid
         hasModerator
         firstName
         lastName
         ~containerOf {
-            xid
+            _uid_
             hasModerator {
-                xid
+                _uid
                 firstName
                 lastName
             }
@@ -18,18 +16,20 @@
     }
 }
 
+------------------------------------------------------------
+
 curl ubuntu:8080/query -XPOST -s -d '
 {
     recurse(func: uid(5764609584618536964)) {
         replyOf
-        xid
+        _uid_
         hasModerator
         firstName
         lastName
         ~containerOf {
-            xid
+            _uid_
             hasModerator {
-                xid
+                _uid_
                 firstName
                 lastName
             }

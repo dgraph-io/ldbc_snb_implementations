@@ -1,0 +1,8 @@
+tagclass
+Country
+Single
+Person
+Album
+MusicalArtist
+OfficeHolder
+Writer

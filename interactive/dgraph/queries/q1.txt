@@ -20,10 +20,45 @@
         locationIP
         email
         language
+        isLocatedIn {
+            name
+        }
     }
 }
 
 ------------------------------------------------------------
+
+curl ubuntu:8080/query -XPOST -s -d '
+
+{
+    var(func: uid(3458788703076356249)) {
+        friend1 as knows {
+            friend2 as knows {
+                friend3 as knows
+            }
+        }
+    }
+
+    q(func: uid(friend1, friend2, friend3), orderdesc: birthday, first: 20) @filter(NOT uid(3458788703076356249) AND eq(firstName, "Cesar")) {
+        _uid_
+        birthday
+        firstName
+        lastName
+        ~knows @filter(uid(3458788703076356249)) {
+            creationDate
+        }
+        gender
+        browserUsed
+        locationIP
+        email
+        language
+        isLocatedIn {
+            name
+        }
+    }
+}
+' | python -m json.tool
+
 
 curl ubuntu:8080/query -XPOST -s -d '
 {

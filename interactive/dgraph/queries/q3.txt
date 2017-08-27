@@ -1,3 +1,27 @@
+{
+    var(func: uid(@Person@)) {
+        f1 as knows {
+            f2 as knows
+        }
+    }
+
+    var(func: uid(f1, f2)) {
+        ~hasCreator {
+            f as count(isLocatedIn) @filter((eq(name, "@Country1@") OR eq(name, "@Country2@")) AND ge(creationDate, "@Date1@") AND le(creationDate, "@Date2@"))
+        }
+        isLocatedIn @filter(NOT eq(name, "@Country1@") AND NOT eq(name, "@Country2@"))
+    }
+
+    q(func: uid(f), orderdesc: val(f), first: 20) @filter(NOT uid(@Person@)) {
+        _uid_
+        val(f)
+        lastName
+        isLocatedIn {
+            name
+        }
+    }
+}
+
 ------------------------------------------------------------
 
 curl ubuntu:8080/query -XPOST -s -d '
@@ -10,7 +34,7 @@ curl ubuntu:8080/query -XPOST -s -d '
 
     var(func: uid(f1, f2)) {
         ~hasCreator {
-            f as count(isLocatedIn) @filter((eq(name, "United_States") OR eq(name, "Oman")) AND ge(creationDate, "") AND le(creationDate, ""))
+            f as count(isLocatedIn) @filter((eq(name, "United_States") OR eq(name, "Oman")) AND ge(creationDate, "2001-01-01") AND le(creationDate, "2017-01-01"))
         }
         isLocatedIn @filter(NOT eq(name, "United_States") AND NOT eq(name, "Oman"))
     }
@@ -57,6 +81,34 @@ curl ubuntu:8080/query -XPOST -s -d '
 }
 ' | python -m json.tool
 
+
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+    var(func: uid(3458764513820542057)) {
+        f1 as knows {
+            f2 as knows
+        }
+    }
+
+    var(func: uid(f1, f2)) {
+        f as firstName
+        ~hasCreator @filter(ge(creationDate, "2010-06-01") AND le(creationDate, "2010-06-30")) {
+            c as count(isLocatedIn)
+        }
+    }
+
+    q(func: uid(f), orderdesc: val(c), first: 5) {
+        _uid_
+        firstName
+        lastName
+        ~hasCreator @filter(ge(creationDate, "2010-06-01") AND le(creationDate, "2010-06-30")) {
+            creationDate
+        }
+        count(~hasCreator) @filter(ge(creationDate, "2010-06-01") AND le(creationDate, "2010-06-30"))
+    }
+}
+' | python -m json.tool
 
 
 curl ubuntu:8080/query -XPOST -s -d '
