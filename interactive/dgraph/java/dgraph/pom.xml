@@ -9,7 +9,7 @@
     <properties>
         <kotlin.version>1.1.4-2</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <main.class>com.ldbc.driver.workloads.ldbc.snb.interactive.db.DgraphDb</main.class>
+        <main.class>com.ldbc.driver.Client</main.class>
     </properties>
     <dependencies>
         <dependency>
