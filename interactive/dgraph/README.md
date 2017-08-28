@@ -20,8 +20,12 @@ then use `dgraphloader` to load them.
 Compile Db class for Dgraph:
 -----------------------------------
 
-1. Get an updated dgraph4j library from
-Go to java/dgraph folder from this checkout, and run:
+1. Get an updated dgraph4j library from https://github.com/windoze/dgraph4j
+2. Build dgraph4j with:
+```
+$ gradle clean install
+```
+3. Go to java/dgraph folder, and build SNB package with:
 ```
 $ mvn clean package
 ```
