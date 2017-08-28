@@ -13,7 +13,7 @@
 
 curl ubuntu:8080/query -XPOST -s -d '
 {
-  q(func: uid(2061586798299))
+  q(func: uid(5764609584621033179))
   {
     hasCreator {
         _uid_
