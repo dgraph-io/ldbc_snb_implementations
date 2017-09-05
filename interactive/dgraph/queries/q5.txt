@@ -5,7 +5,7 @@
         }
     }
 
-    var(func: uid(f1, f2)) {
+    var(func: uid(f1, f2)) @filter(NOT uid(@Person@)) {
         ~hasMember @filter(ge(joinDate, "2006-0101")) {
             containerOf {
                 hasCreator @filter
@@ -13,7 +13,7 @@
         }
     }
 
-    q(func: uid(f), orderdesc: val(f), first: 20) @filter(NOT uid(@Person@)) {
+    q(func: uid(f), orderdesc: val(f), first: 20) {
         _uid_
         val(f)
         lastName
@@ -46,6 +46,22 @@ curl ubuntu:8080/query -XPOST -s -d '
         lastName
         isLocatedIn {
             name
+        }
+    }
+}
+' | python -m json.tool
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+    var(func: uid(3458764513820541861)) {
+        f1 as knows
+    }
+
+    q(func: uid(f1)) @filter(NOT uid(3458764513820541861)) {
+        ~hasCreator {
+            ~containerOf @filter(uid_in(hasCreator, f1)) {
+                _uid_
+            }
         }
     }
 }

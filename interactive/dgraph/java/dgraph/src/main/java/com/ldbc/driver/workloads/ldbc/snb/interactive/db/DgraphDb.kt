@@ -1,6 +1,7 @@
 package com.ldbc.driver.workloads.ldbc.snb.interactive.db
 
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.ldbc.driver.*
@@ -557,32 +558,34 @@ class DgraphDb : Db() {
         override fun executeOperation(operation: LdbcQuery9, state: DgraphDbConnectionState, resultReporter: ResultReporter) {
             val conn = state.conn
             val RESULT = ArrayList<LdbcQuery9Result>()
-            val results_count = 0
+            var results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query9.txt"))
+                var queryString = file2string(File(state.queryDir, "q9.txt"))
                 val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'+00:00'")
                 sdf.timeZone = TimeZone.getTimeZone("GMT")
-                queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
-                queryString = queryString.replace("@Date0@".toRegex(), sdf.format(operation.maxDate()))
+                queryString = queryString.replace("@Person@", operation.personId().toString())
+                queryString = queryString.replace("@Date0@", sdf.format(operation.maxDate()))
 
                 if (state.isPrintNames)
                     println("########### LdbcQuery9")
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()
-                // TODO:
-                //                for(JsonElement v: result.getAsJsonArray()) {
-                //                    String key=(String)keys.next();
-                //                    results_count++;
-                //                    v...
-                //                    LdbcQuery9Result tmp = new LdbcQuery9Result(personId, personFirstName, personLastName, postOrCommentId, postOrCommentContent, postOrCommentCreationDate);
-                //                    if (state.isPrintResults())
-                //                        System.out.println(tmp.toString());
-                //                    RESULT.add(tmp);
-                //                }
-                // conn.close()
+                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray
+                result.map { it.asJsonObject }.forEach {
+                    results_count++
+                    val person = it["hasCreator"].asJsonArray[0].asJsonObject
+                    RESULT.add(LdbcQuery9Result(
+                            getXid(person["_uid_"].asLong),
+                            person["firstName"].asString,
+                            person["lastName"].asString,
+                            getXid(it["_uid_"].asLong),
+                            it["content"].asString,
+                            it["creationDate"].asLong
+                    ))
+
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -612,7 +615,7 @@ class DgraphDb : Db() {
             val results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query10.txt"))
+                var queryString = file2string(File(state.queryDir, "q10.txt"))
                 queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
                 queryString = queryString.replace("@HS0@".toRegex(), operation.month().toString())
                 var nextMonth = operation.month() + 1
@@ -662,7 +665,7 @@ class DgraphDb : Db() {
             val results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query11.txt"))
+                var queryString = file2string(File(state.queryDir, "q11.txt"))
                 queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
                 queryString = queryString.replace("@Date0@".toRegex(), operation.workFromYear().toString())
                 queryString = queryString.replace("@Country@".toRegex(), operation.countryName())
@@ -710,7 +713,7 @@ class DgraphDb : Db() {
             val results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query12.txt"))
+                var queryString = file2string(File(state.queryDir, "q12.txt"))
                 queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
                 queryString = queryString.replace("@TagType@".toRegex(), operation.tagClassName())
 
@@ -749,15 +752,24 @@ class DgraphDb : Db() {
      * – > 0: regular case
      */
     class LdbcQuery13ToDgraph : OperationHandler<LdbcQuery13, DgraphDbConnectionState> {
+        fun depth(o: JsonArray): Int {
+            var obj = o[0].asJsonObject
+            var ret = 0
+            while (obj.has("knows")) {
+                ret++
+                obj = obj["knows"].asJsonObject
+            }
+            return ret
+        }
 
         @Throws(DbException::class)
         override fun executeOperation(operation: LdbcQuery13, state: DgraphDbConnectionState, resultReporter: ResultReporter) {
             val conn = state.conn
             val RESULT = ArrayList<LdbcQuery13Result>()
-            val results_count = 0
+            var results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query13.txt"))
+                var queryString = file2string(File(state.queryDir, "q13.txt"))
                 queryString = queryString.replace("@Person1@".toRegex(), operation.person1Id().toString())
                 queryString = queryString.replace("@Person2@".toRegex(), operation.person2Id().toString())
 
@@ -766,18 +778,14 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()
-                // TODO:
-                //                for(JsonElement v: result.getAsJsonArray()) {
-                //                    String key=(String)keys.next();
-                //                    results_count++;
-                //                    v...
-                //                    LdbcQuery13Result tmp = new LdbcQuery13Result(shortestPathlength);
-                //                    if (state.isPrintResults())
-                //                        System.out.println(tmp.toString());
-                //                    RESULT.add(tmp);
-                //                }
-                // conn.close()
+                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject
+                if (!result.has("_path_")) {
+                    // Path not found
+                    RESULT.add(LdbcQuery13Result(-1))
+                } else {
+                    RESULT.add(LdbcQuery13Result(depth(result["_path_"].asJsonArray)))
+                }
+                results_count++
             } catch (e: Exception) {
                 e.printStackTrace()
 

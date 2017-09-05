@@ -1,0 +1,67 @@
+{
+    var(func: uid(@Person@)) {
+        f1 as knows {
+            f2 as knows
+        }
+    }
+
+    var(func: uid(f1, f2))  @filter(NOT uid(@Person@))  {
+        ~hasCreator @filter(le(creationDate, "@Date0@")) {
+            _uid_
+            c as content
+            creationDate
+            hasCreator {
+                _uid_
+                firstName
+                lastName
+            }
+        }
+    }
+
+    q(func: uid(c), orderdesc:creationDate, first: 20) {
+        _uid_
+        content
+        creationDate
+        hasCreator {
+            _uid_
+            firstName
+            lastName
+        }
+    }
+}
+
+------------------------------------------------------------
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+    var(func: uid(3458788703076356249)) {
+        f1 as knows {
+            f2 as knows
+        }
+    }
+
+    var(func: uid(f1, f2))  @filter(NOT uid(3458788703076356249))  {
+        ~hasCreator @filter(le(creationDate, "2012-10-14")) {
+            _uid_
+            c as content
+            creationDate
+            hasCreator {
+                _uid_
+                firstName
+                lastName
+            }
+        }
+    }
+
+    q(func: uid(c), orderdesc:creationDate, first: 20) {
+        _uid_
+        content
+        creationDate
+        hasCreator {
+            _uid_
+            firstName
+            lastName
+        }
+    }
+}
+' | python -m json.tool

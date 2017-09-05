@@ -1,0 +1,33 @@
+{
+ path as shortest(from: @Person1@, to: @Person2@) {
+  friend
+ }
+ path(func: uid(path)) {
+   name
+ }
+}
+------------------------------------------------------------
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+ shortest(from: 3458764513820541861, to: 3458795300146125247) {
+  knows
+ }
+}
+' | python -m json.tool
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+ shortest(from: 3458764513820541861, to: 3458764513820541861) {
+  knows
+ }
+}
+' | python -m json.tool
+
+curl ubuntu:8080/query -XPOST -s -d '
+{
+ shortest(from: 3458764513820541861, to: 3458764513820541862) {
+  knows
+ }
+}
+' | python -m json.tool

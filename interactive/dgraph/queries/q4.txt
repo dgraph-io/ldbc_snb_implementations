@@ -45,7 +45,7 @@ curl ubuntu:8080/query -XPOST -s -d '
         knows {
             ~hasCreator @filter(has(~containerOf))  {
                 tag as hasTag {
-                    postCount as count(~hasTag) {
+                    postCount as count(~hasTag) @filter(ge(creationDate, "2012-02-06") AND le(creationDate, "2012-02-10")) {
                     }
                 }
 
@@ -53,13 +53,10 @@ curl ubuntu:8080/query -XPOST -s -d '
         }
     }
 
-    q(func: uid(tag), orderdesc: val(postCount), orderasc: name, first: 10) {
+    q(func: uid(tag), orderdesc: val(postCount), first: 10) {
         _uid_
         name
         val(postCount)
-        ~hasTag {
-            creationDate
-        }
     }
 }
 ' | python -m json.tool
