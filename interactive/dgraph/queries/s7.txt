@@ -5,6 +5,8 @@
     }
     q(func: uid(reply)) {
         _uid_
+        content
+        creationDate
         hasCreator {
             _uid_
             firstName
@@ -18,19 +20,16 @@
 
 curl ubuntu:8080/query -XPOST -s -d '
 {
-    var (func: uid(5764608210229003031)) {
-        reply as ~replyOf
-        author as hasCreator
-    }
-    q(func: uid(reply)) {
-        _uid_
-        hasCreator {
+    q(func: uid(412316861014)) {
+        ~replyOf {
             _uid_
-            firstName
-            lastName
-            count(knows @filter(uid(author)))
+            hasCreator {
+                author as _uid_
+                firstName
+                lastName
+                count(knows @filter(uid(author)))
+            }
         }
     }
 }
 ' | python -m json.tool
-

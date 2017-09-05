@@ -338,7 +338,7 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray
+                val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
                 result.map { it.asJsonObject }.forEach {
                     results_count++
                     RESULT.add(LdbcQuery4Result(
@@ -521,7 +521,7 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray
+                val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
                 result.map { it.asJsonObject }.forEach {
                     results_count++
                     val person = it["hasCreator"].asJsonArray[0].asJsonObject
@@ -572,7 +572,7 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray
+                val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
                 result.map { it.asJsonObject }.forEach {
                     results_count++
                     val person = it["hasCreator"].asJsonArray[0].asJsonObject
@@ -757,7 +757,7 @@ class DgraphDb : Db() {
             var ret = 0
             while (obj.has("knows")) {
                 ret++
-                obj = obj["knows"].asJsonObject
+                obj = obj["knows"].asJsonArray[0].asJsonObject
             }
             return ret
         }
@@ -778,12 +778,12 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
 
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject
-                if (!result.has("_path_")) {
+                val result = conn.query(queryString).toJsonObject()
+                if (result.has("_path_")) {
+                    RESULT.add(LdbcQuery13Result(depth(result["_path_"].asJsonArray)))
+                } else {
                     // Path not found
                     RESULT.add(LdbcQuery13Result(-1))
-                } else {
-                    RESULT.add(LdbcQuery13Result(depth(result["_path_"].asJsonArray)))
                 }
                 results_count++
             } catch (e: Exception) {
@@ -1040,7 +1040,7 @@ class DgraphDb : Db() {
                 if (state.isPrintStrings)
                     println(queryString)
                 val result = conn.query(queryString).toJsonObject()
-                val obj = result["q"][0]["hasCreator"].asJsonObject
+                val obj = result["q"][0]["hasCreator"][0].asJsonObject
                 results_count++
                 RESULT = LdbcShortQuery5MessageCreatorResult(
                         obj.xid,
@@ -1115,25 +1115,28 @@ class DgraphDb : Db() {
 
             try {
                 val queryString = file2string(File(state.queryDir, "s7.txt"))
-                        .replace("@Message@", operation.messageId().toString())
+                        .replace("@Message@", getMessageId(operation.messageId()).toString())
                 if (state.isPrintNames)
                     println("########### LdbcShortQuery7")
                 if (state.isPrintStrings) {
                     println(queryString)
                 }
-                val result = conn.query(queryString).toJsonObject()["data"].asJsonObject["q"].asJsonArray
-                result.map { it.asJsonObject }.forEach {
-                    results_count++
-                    val replyAuthor = it["hasCreator"].asJsonArray[0].asJsonObject
-                    RESULT.add(LdbcShortQuery7MessageRepliesResult(
-                            getXid(it["_uid_"].asLong),
-                            it["content"].asString,
-                            it["creationDate"].asLong,
-                            getXid(replyAuthor["_uid_"].asLong),
-                            replyAuthor["firstName"].asString,
-                            replyAuthor["lastName"].asString,
-                            replyAuthor["count(knows)"].asLong > 0
-                    ))
+                val res1 = conn.query(queryString).toJsonObject()
+                if (res1.has("q")) {
+                    val result = res1["q"].asJsonArray
+                    result.map { it.asJsonObject }.forEach {
+                        results_count++
+                        val replyAuthor = it["hasCreator"].asJsonArray[0].asJsonObject
+                        RESULT.add(LdbcShortQuery7MessageRepliesResult(
+                                getXid(it["_uid_"].asLong),
+                                it["content"].asString,
+                                it["creationDate"].asDateLong,
+                                getXid(replyAuthor["_uid_"].asLong),
+                                replyAuthor["firstName"].asString,
+                                replyAuthor["lastName"].asString,
+                                replyAuthor["count(knows)"].asLong > 0
+                        ))
+                    }
                 }
 
                 // conn.close()
