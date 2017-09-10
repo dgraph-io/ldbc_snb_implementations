@@ -3,8 +3,19 @@ import sys
 import gzip
 import os.path
 
+def writestr_py3(f, s):
+	f.write(s.encode("utf-8"))
+
+def writestr_py2(f, s):
+	f.write(s)
+
 input_dir = "/Users/chenxu/social_network"
-output_file = sys.stdout
+if(sys.version_info.major>=3):
+	output_file = sys.stdout.buffer
+	writestr=writestr_py3
+else:
+	output_file = sys.stdout
+	writestr=writestr_py2
 #output_file = gzip.open("/tmp/a.rdf.gz", "wb", 9)
 
 MESSAGE     =0x0000000000000000
@@ -45,7 +56,7 @@ def load_nodes(fn, prefix, fields, node_type=""):
 		dot()
 		# Add a node type edge
 		sub = prefix | int(row[0])
-		output_file.write('<0x%x> <nodeType> "%s" .\n' % (sub, node_type))
+		writestr(output_file, '<0x%x> <nodeType> "%s" .\n' % (sub, node_type))
 		for index, f in enumerate(fields):
 			predicate=f
 			# Dgraph cannot accept datetime with ":NNNN", remove it
@@ -53,7 +64,7 @@ def load_nodes(fn, prefix, fields, node_type=""):
 				obj = '"%s"' % row[index+1][:-5]
 			else:
 				obj='"%s"' % row[index+1]
-			output_file.write('<0x%x> <%s> %s .\n' % (sub, predicate, obj))
+			writestr(output_file, '<0x%x> <%s> %s .\n' % (sub, predicate, obj))
 
 def load_edges(fn, sub_prefix, predicate, obj_prefix, fields=[]):
 	csvreader=get_csvreader(fn)
@@ -62,12 +73,12 @@ def load_edges(fn, sub_prefix, predicate, obj_prefix, fields=[]):
 		sub = sub_prefix | int(row[0])
 		obj = obj_prefix | int(row[1])
 		if len(fields)==0:
-			output_file.write('<0x%x> <%s> <0x%x> .\n' % (sub, predicate, obj))
+			writestr(output_file, '<0x%x> <%s> <0x%x> .\n' % (sub, predicate, obj))
 		else:
 			facets=[]
 			for index, f in enumerate(fields):
 				facets.append('%s="%s"' % (f, row[index+2]))
-			output_file.write('<0x%x> <%s> <0x%x> (%s) .\n' % (sub, predicate, obj, ",".join(facets)))
+			writestr(output_file, '<0x%x> <%s> <0x%x> (%s) .\n' % (sub, predicate, obj, ",".join(facets)))
 
 load_nodes(os.path.join(input_dir, "tag_0_0.csv"), TAG, ["name", "url"])
 load_nodes(os.path.join(input_dir, "tagclass_0_0.csv"), TAGCLASS, ["name", "url"])
