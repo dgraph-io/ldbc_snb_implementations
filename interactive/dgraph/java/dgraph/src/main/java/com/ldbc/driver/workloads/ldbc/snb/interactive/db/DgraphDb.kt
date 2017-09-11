@@ -187,7 +187,7 @@ class DgraphDb : Db() {
                             it["lastName"].asString,
                             1, // TODO: How to get distance?
                             dateToLong(it["birthday"].asString),
-                            if (it.has("~knows")) it["~knows"].asJsonObject["creationDate"].asLong else 0L,
+                            it["@facets"]["~knows"]["creationDate"].asDateLong,
                             it["gender"].asString,
                             it["browserUsed"].asString,
                             it["locationIP"].asString,
@@ -524,12 +524,12 @@ class DgraphDb : Db() {
                 val result = conn.query(queryString).toJsonObject()["q"].asJsonArray
                 result.map { it.asJsonObject }.forEach {
                     results_count++
-                    val person = it["hasCreator"].asJsonArray[0].asJsonObject
+                    val person = it["hasCreator"][0].asJsonObject
                     RESULT.add(LdbcQuery8Result(
-                            getXid(person["_uid_"].asLong),
+                            person.xid,
                             person["firstName"].asString,
                             person["lastName"].asString,
-                            it["creationDate"].asLong,
+                            it["@facets"]["~knows"]["creationDate"].asDateLong,
                             getXid(it["_uid_"].asLong),
                             it["content"].asString
                     ))
@@ -582,7 +582,7 @@ class DgraphDb : Db() {
                             person["lastName"].asString,
                             getXid(it["_uid_"].asLong),
                             it["content"].asString,
-                            it["creationDate"].asLong
+                            it["creationDate"].asDateLong
                     ))
 
                 }
@@ -874,7 +874,7 @@ class DgraphDb : Db() {
                             it["browserUsed"].asString,
                             getXid(it["isLocatedIn"][0]["_uid_"].asLong),
                             it["gender"].asString,
-                            dateToLong(it["creationDate"])
+                            it["creationDate"].asDateLong
                     )
                     if (state.isPrintResults)
                         println(RESULT.toString())
