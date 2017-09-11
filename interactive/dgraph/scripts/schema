@@ -1,0 +1,43 @@
+xid: string @index(exact) .
+nodeType: string @index(exact) .
+creationDate: dateTime @index(hour) .
+name: string @index(exact, term) .
+isLocatedIn: uid @reverse @count .
+
+firstName: string @index(exact, term) .
+lastName: string @index(exact, term) .
+birthday: dateTime @index(hour) .
+
+length: int .
+
+type: string @index(exact) .
+
+
+hasCreator: uid @reverse @count .
+
+hasTag: uid @reverse @count .
+
+containerOf: uid @reverse @count .
+
+replyOf: uid @reverse @count .
+
+hasMember: uid @reverse @count .
+joinDate: dateTime @index(hour) .
+
+hasModerator: uid @reverse @count .
+
+hasInterest: uid @reverse @count .
+
+knows: uid @reverse @count .
+
+likes: uid @reverse @count .
+
+studyAt: uid @reverse @count .
+
+workAt: uid @reverse @count .
+
+isPartOf: uid @reverse @count .
+
+isSubclassOf: uid @reverse @count .
+
+hasType: uid @reverse @count .
