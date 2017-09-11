@@ -6,6 +6,6 @@
 
 4. Replace `updateStream.properties` with the file with the same name in SNB dataset you got in step 1, original file was copied from pregenerated SNB dataset factor 1.
 
-5. If you need to run some specific queries only, change settings in `ldbc_snb_interactive_SF-0001.properties`.
+5. If you need to run some specific queries only, change settings in `ldbc_snb_interactive_SF-[NNNN].properties`.
 
 6. Run `run/run.sh` to start the benchmark, the result is in `run/results`.
