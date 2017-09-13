@@ -1,66 +1,43 @@
-// Common
 xid: string @index(exact) .
 nodeType: string @index(exact) .
 creationDate: dateTime @index(hour) .
 name: string @index(exact, term) .
 isLocatedIn: uid @reverse @count .
 
-// Person
 firstName: string @index(exact, term) .
 lastName: string @index(exact, term) .
 birthday: dateTime @index(hour) .
 
-// Comment
 length: int .
 
-// Organisation and Place
 type: string @index(exact) .
 
-// Nothing special
-// Forum
-// Post
-// Tag
-// Tagclass
 
-// Comment/Post has creator
 hasCreator: uid @reverse @count .
 
-// Forum/Comment/Post has tag
 hasTag: uid @reverse @count .
 
-// Forum contains post
 containerOf: uid @reverse @count .
 
-// Comment reply post/comment
 replyOf: uid @reverse @count .
 
-// Forum has member
 hasMember: uid @reverse @count .
 joinDate: dateTime @index(hour) .
 
-// Forum has moderator
 hasModerator: uid @reverse @count .
 
-// Person interested in tag
 hasInterest: uid @reverse @count .
 
-// Person knows person
 knows: uid @reverse @count .
 
-// Person like post/comment
 likes: uid @reverse @count .
 
-// Person study at organisation
 studyAt: uid @reverse @count .
 
-// Person work at organisation
 workAt: uid @reverse @count .
 
-// Place is part of place
 isPartOf: uid @reverse @count .
 
-// Tagclass is subclass of tagclass
 isSubclassOf: uid @reverse @count .
 
-// Tag has type of tagclass
 hasType: uid @reverse @count .

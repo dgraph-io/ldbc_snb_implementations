@@ -271,7 +271,7 @@ class DgraphDb : Db() {
             val results_count = 0
             RESULT.clear()
             try {
-                var queryString = file2string(File(state.queryDir, "query3.txt"))
+                var queryString = file2string(File(state.queryDir, "q3.txt"))
                 val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'+00:00'")
                 sdf.timeZone = TimeZone.getTimeZone("GMT")
                 queryString = queryString.replace("@Person@".toRegex(), operation.personId().toString())
